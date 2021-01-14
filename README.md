@@ -1,5 +1,5 @@
 # Memory Game 
-## This game is built using the Lucid Hardware Development Language for the Alchitry Au FPGA. 
+### This game is built using the Lucid Hardware Development Language for the Alchitry Au FPGA. 
 
 ## Game logic
 1. Press the start button to begin the game
