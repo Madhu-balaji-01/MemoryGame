@@ -1,0 +1,439 @@
+module gameplay (
+    input clk,  // clock
+    input rst,  // reset
+    input buttons[6], //Button input from user
+    
+    output red,      //LED sequence to be shown to user
+    output green,
+    output blue,
+    output yellow,
+    
+    output status_sel[4],  //7 seg to display PLAY/PASS/FAIL/YAY/OUCH
+    output status_seg[7],
+    
+    output lives_sel[4],  //7 seg to display number of lives 
+    output lives_seg[7], 
+     
+    output io_led[3][8]   //debug
+    ) {
+    
+    .clk(clk){
+      .rst(rst){
+        
+        sequence_generator seq_gen;
+        check_sequence check_seq;
+        multi_seven_seg lives_disp;
+        multi_seven_seg status_disp;
+        
+        counter slowClock_game(#SIZE(28)); 
+        
+        fsm gameMachine = {START,UPDATE_SETTINGS,GENERATE, DISPLAY_CLR1, DISPLAY_CLR2,
+                           DISPLAY_CLR3, DISPLAY_CLR4, DISPLAY_CLR5, DISPLAY_CLR6,
+                           STORE, CHECK, PASS_STAGE,WIN_GAME,FAIL_STAGE,LOSE_GAME,RESET,NEXT};
+        
+        //Registers to store intermediate game settings 
+        dff button_count[3];    
+        dff seq_store[25];
+        dff new_level[2];
+        dff sequence[25];
+        dff life_var[2];
+        dff check_result[2];
+      }
+    }
+   
+    edge_detector slowClockEdge_1(#RISE(1), #FALL(0),.clk(clk));
+    
+  
+    always {
+    io_led = 3x{{8h00}};
+    slowClockEdge_1.in = slowClock_game.value[27];
+    
+   
+    //Initiallizing all LEDs to be off     
+      red = 4b0;
+      blue = 4b0;
+      green = 4b0;
+      yellow = 4b0;
+      
+    life_var.d = b11;    //Setting number of lives to 3
+    
+      seq_gen.stage = new_level.q;
+      check_seq.inp_seq = seq_store.q;
+      check_seq.stage = new_level.q;
+      check_seq.correct_seq = sequence.q;
+     
+      
+      //lives_disp.values = {8h0, 8h0, 8h0, 8h0}; //debug
+      lives_sel = lives_disp.sel;
+      lives_seg = ~lives_disp.seg;
+      
+      status_disp.values = {8h9, 8h9, 8h9, 8h9};
+      status_sel = status_disp.sel;
+      status_seg = ~status_disp.seg;
+      new_level.d = new_level.q;
+      
+      case(gameMachine.q){
+      
+        gameMachine.START:
+          green = 4b1;
+          new_level.d = b01;
+          status_disp.values = {8h8, 8hC, 8hA, 8hE};  //Displays "PLAY" when game starts
+        
+          //Displaying no of lives         
+          if (life_var.q==b11){
+            lives_disp.values = {8h3,8h9,8h9,8h9};
+          } 
+          else if (life_var.q==b10){
+          lives_disp.values = {8h9,8h9,8h9,8h2};
+          }
+          else{
+          lives_disp.values = {8h9,8h9,8h9,8h1};
+          }
+          
+          //If start button is pressed, proceed. 
+          if (buttons[4]){
+          gameMachine.d = gameMachine.GENERATE;
+        }
+        
+           
+        gameMachine.GENERATE:
+        status_disp.values = {8h8, 8hC, 8hA, 8hE}; //display PLAY
+        
+        io_led[0][2:0]=new_level.q; //debug
+        io_led[1][2:0]=life_var.q;
+        
+        //Initializing 
+        button_count.d=3b000;
+        seq_store.d=25b0;
+
+        //generate sequence using level input, then update colours input
+         seq_gen.stage= new_level.q;
+         sequence.d = seq_gen.seq;
+        
+        if (slowClockEdge_1.out ==1){       
+         gameMachine.d = gameMachine.DISPLAY_CLR1;
+        }
+        
+        
+        gameMachine.DISPLAY_CLR1:
+        status_disp.values = {8h8, 8hC, 8hA, 8hE}; //display PLAY
+
+          io_led[0][2:0]=new_level.q; //debug
+          io_led[1][2:0]=life_var.q;  
+          
+          //According to the generated sequence,light up corresponding LED
+          case(sequence.q[3:0]){ 
+            b1000:
+                red = b1;
+            b0100:
+                green = b1;        
+            b1010:
+                blue = b1;
+            b0001:
+                yellow = b1;
+            }
+         
+           if (slowClockEdge_1.out ==1){
+             gameMachine.d = gameMachine.DISPLAY_CLR2;
+            }
+        
+        
+         gameMachine.DISPLAY_CLR2:
+          status_disp.values = {8h8, 8hC, 8hA, 8hE}; 
+
+          io_led[0][2:0]=new_level.q;  //debug
+          io_led[1][2:0]=life_var.q;   
+             
+          case(sequence.q[7:4]){ 
+            b1000:
+                red = 4b1;
+            b0100:
+                green = 4b1;        
+            b1010:
+                blue = 4b1;
+            b0001:
+                yellow = 4b1;
+            } 
+        
+           if (slowClockEdge_1.out ==1){
+             gameMachine.d = gameMachine.DISPLAY_CLR3;
+            }
+        
+        
+       gameMachine.DISPLAY_CLR3:
+        status_disp.values = {8h8, 8hC, 8hA, 8hE}; 
+        
+          io_led[0][2:0]=new_level.q; //debug
+          io_led[1][2:0]=life_var.q;      
+ 
+          case(sequence.q[11:8]){ 
+            b1000:
+                red = 4b1;
+            b0100:
+                green = 4b1;        
+            b1010:
+                blue = 4b1;
+            b0001:
+                yellow = 4b1;
+            } 
+        
+           if (slowClockEdge_1.out ==1){
+             gameMachine.d = gameMachine.DISPLAY_CLR4;
+            }
+        
+        
+        gameMachine.DISPLAY_CLR4:
+        status_disp.values = {8h8, 8hC, 8hA, 8hE}; 
+        
+          io_led[0][2:0]=new_level.q; //debug
+          io_led[1][2:0]=life_var.q;      
+
+          case(sequence.q[15:12]){ 
+            b1000:
+                red = 4b1;
+            b0100:
+                green = 4b1;        
+            b1010:
+                blue = 4b1;
+            b0001:
+                yellow = 4b1;
+            }
+        
+           if (slowClockEdge_1.out ==1){
+              //If level 1, go to STORE. Else, show next colour. 
+              if (new_level.q==b01){
+               gameMachine.d = gameMachine.STORE;  
+              }else{
+               gameMachine.d = gameMachine.DISPLAY_CLR5;
+              }
+            }
+        
+          
+        gameMachine.DISPLAY_CLR5:
+          status_disp.values = {8h8, 8hC, 8hA, 8hE};
+        
+          io_led[0][2:0]=new_level.q; //debug
+          io_led[1][2:0]=life_var.q;    
+          
+          case(sequence.q[19:16]){ 
+            b1000:
+                red = 4b1;
+            b0100:
+                green = 4b1;        
+            b1010:
+                blue = 4b1;
+            b0001:
+                yellow = 4b1;
+            }
+         
+          if (slowClockEdge_1.out ==1){
+              //If level 2, go to store. Else, show next colour.
+              if (new_level.q==b10){
+               gameMachine.d = gameMachine.STORE;
+              }else{
+               gameMachine.d = gameMachine.DISPLAY_CLR6;
+              }
+            }
+          
+        gameMachine.DISPLAY_CLR6:
+          status_disp.values = {8h8, 8hC, 8hA, 8hE}; 
+        
+          io_led[0][2:0]=new_level.q; //debug
+          io_led[1][2:0]=life_var.q;   
+           
+          case(sequence.q[23:20]){ 
+            b1000:
+                red = 4b1;
+            b0100:
+                green = 4b1;        
+            b1010:
+                blue = 4b1;
+            b0001:
+                yellow = 4b1;
+            } 
+        
+           if (slowClockEdge_1.out ==1){
+             gameMachine.d = gameMachine.STORE;
+        }
+              
+             
+        gameMachine.STORE:
+          //Testing buttons
+          io_led[0]=seq_store.q[7:0];
+          io_led[1]=seq_store.q[15:8];
+          io_led[2]=seq_store.q[23:16];
+        
+          if (buttons[3] | buttons[2] | buttons[1] | buttons[0]){ //if any button is pressed
+             
+            button_count.d = button_count.q + 1; //increase button count
+          
+          //Store button sequence according to the colour pressed 
+          case(button_count.q){
+            b000:
+                if(buttons[3]==1){ 
+                  seq_store.d[3:0]=1000;} //red button
+                else if(buttons[2]==1){
+                  seq_store.d[3:0]=0100;} //green button
+                else if(buttons[1]==1){
+                  seq_store.d[3:0]=0010;} //blue button
+               else if(buttons[0]==1){
+                  seq_store.d[3:0]=0001;} //yellow button
+              
+            b001:
+                if(buttons[3]==1){
+                  seq_store.d[7:4]=1000;}
+                else if(buttons[2]==1){
+                  seq_store.d[7:4]=0100;}
+                else if(buttons[1]==1){
+                  seq_store.d[7:4]=0010;}
+                else if(buttons[0]==1){
+                  seq_store.d[7:4]=0001;}
+                
+            b010:
+                if(buttons[3]==1){
+                  seq_store.d[11:8]=1000;}
+                else if(buttons[2]==1){
+                  seq_store.d[11:8]=0100;}
+                else if(buttons[1]==1){
+                  seq_store.d[11:8]=0010;}
+                else if(buttons[0]==1){
+                  seq_store.d[11:8]=0001;}  
+                
+            b011:
+                if(buttons[3]==1){
+                  seq_store.d[15:12]=1000;}
+                else if(buttons[2]==1){
+                  seq_store.d[15:12]=0100;}
+                else if(buttons[1]==1){
+                  seq_store.d[15:12]=0010;}
+                else if(buttons[0]==1){
+                  seq_store.d[15:12]=0001;}  
+                
+            b100:
+                if(buttons[3]==1){
+                  seq_store.d[19:16]=1000;}
+                else if(buttons[2]==1){
+                  seq_store.d[19:16]=0100;}
+                else if(buttons[1]==1){
+                  seq_store.d[19:16]=0010;}
+                else if(buttons[0]==1){
+                  seq_store.d[19:16]=0001;}
+                
+            b101:
+                if(buttons[3]==1){
+                  seq_store.d[23:20]=1000;}
+                else if(buttons[2]==1){
+                  seq_store.d[23:20]=0100;}
+                else if(buttons[1]==1){
+                  seq_store.d[23:20]=0010;}
+                else if(buttons[0]==1){
+                  seq_store.d[23:20]=0001;}                                                              
+              }
+          }
+          //If level 1, proceed to STORE after 4 button presses. If level 2, procees to STORE after 5 button presses.
+            if (button_count.q ==4 & new_level.q==b01){
+               gameMachine.d = gameMachine.CHECK;
+            }else if ( button_count.q ==5 & new_level.q==b10){
+               gameMachine.d = gameMachine.CHECK;
+            }else if (button_count.q==6 & new_level.q==b11){
+               gameMachine.d = gameMachine.CHECK;
+            }else{
+            gameMachine.d = gameMachine.STORE;
+            }
+                
+       
+        gameMachine.CHECK:
+        check_seq.inp_seq = seq_store.q;
+        check_seq.correct_seq = sequence.q;
+        check_result.d = check_seq.check_result; 
+        
+        if (slowClockEdge_1.out ==1){
+          if (check_result.q[0]){
+              gameMachine.d = gameMachine.PASS_STAGE;
+            }
+         else{
+            gameMachine.d = gameMachine.FAIL_STAGE;
+            }
+        } 
+        
+        gameMachine.PASS_STAGE:
+        status_disp.values = {8h5,8h5, 8hC,8hE};   //Display PASS.  
+        
+        
+         if (slowClockEdge_1.out ==1){
+          //If already at level 3, go to WIN_GAME
+          if (new_level.q == b11){
+            gameMachine.d = gameMachine.WIN_GAME;
+          }
+          else{  //Increase level 
+             if(new_level.q==01){ 
+                new_level.d =10;}
+             else if(new_level.q==10){
+                new_level.d=11;}
+             gameMachine.d = gameMachine.NEXT;
+          }
+        }
+            
+        
+        gameMachine.FAIL_STAGE:
+        //If lives = 0, go to LOSE_GAME
+        if(life_var.q==b01){
+          gameMachine.d = gameMachine.LOSE_GAME;
+        }
+        
+        status_disp.values = {8hA, 8h1, 8hC, 8hB}; //Display FAIL.  
+        life_var.d = life_var.q - 1;   //deduct lives
+        if (slowClockEdge_1.out == 1){
+        gameMachine.d = gameMachine.NEXT;
+        }
+        
+         
+        gameMachine.NEXT:
+        //If user wants to continue, he must press next button.
+        if (buttons[5]==1){
+            if (new_level.q == b01){
+              new_level.d = b10;}
+            else if (new_level.q == b10){
+              new_level.d = b11;}
+         gameMachine.d = gameMachine.GENERATE;
+        //Else press start button to restart. 
+        }else if (buttons[4]){
+           gameMachine.d = gameMachine.RESET;
+        }
+        
+        
+      gameMachine.WIN_GAME:
+      //Debug
+        green = 1;
+        blue = 1;
+        
+        status_disp.values = {8h8,8hC,8h8,8h9} ; //display YAY
+        if (slowClockEdge_1.out==1){
+        gameMachine.d = gameMachine.RESET; //reset game
+        }
+        
+        
+      gameMachine.LOSE_GAME:
+      //Debug
+          red=1;
+          yellow = 1;
+        
+        status_disp.values = {8hD,8h7,8h6,8h0} ; //display OUCH
+        if (slowClockEdge_1.out==1){
+        gameMachine.d = gameMachine.RESET;  //reset
+        }
+       
+          
+      gameMachine.RESET:
+        //Reset all settings
+        life_var.d = b11;
+        new_level.d = b01;
+        button_count.d = b000;
+        sequence.d = 25b0;
+        if (slowClockEdge_1.out==1){
+        gameMachine.d = gameMachine.START;
+        }
+    }
+  }
+}
+  

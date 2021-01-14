@@ -1,0 +1,75 @@
+//This module checks the user's input against the correct LED sequence.
+
+module check_sequence (
+    input clk,  // clock
+    input rst,  // reset
+    input stage[16],       //last 2 bits indicate level/stage number  
+    input inp_seq[25],      //from store_press 
+    input correct_seq[25], //from sequence generator 
+    output check_result[2]
+  ) {
+  
+  dff result[1](#INIT(0),.clk(clk), .rst(rst));    //register to store result of comparison 
+  alu alu;
+  
+  sig cmp1;        //temp variable to store result of comparison of lower 16 bits
+  sig cmp2;        //temp variable to store result of comparison of higher bits  
+
+  always {
+    alu.a = 16b0;
+    alu.b = 16b0;
+    alu.alufn_signal = 6b0;
+    
+    case (stage[1:0]){
+          b01:
+          alu.a = inp_seq[15:0];
+          alu.b = correct_seq[15:0];
+          alu.alufn_signal = b110011; //OPCODE for CMPEQ function
+          result.d = alu.alu[0];
+          
+          
+          b10:
+          //Since there are 5 members in the seq and each member is represented by 4 bits, inp_seq and correct_seq are 20 bits long.
+         
+        alu.a = inp_seq[15:0];  //Comparing lower 16 bits 
+          alu.b = inp_seq[15:0];
+          alu.alufn_signal = b110011; 
+          cmp1 = alu.alu[0];
+          
+          alu.a = inp_seq[19:16]; //Comparing higher 4 bits
+          alu.b = inp_seq[19:16]; 
+          alu.alufn_signal = b110011; 
+          cmp2 = alu.alu[0];
+          
+          //Checking if both subparts of the sequence are equal
+          alu.a = cmp1;
+          alu.b = cmp2;
+          alu.alufn_signal = b011000; //OPCODE for AND function
+          result.d = alu.alu[0]; 
+          
+            
+          b11: 
+          //Since there are 6 members in the seq and each member is represented by 4 bits, inp_seq and correct_seq are 24 bits long. 
+          alu.a = inp_seq[15:0]; //Comparing lower 16 bits
+          alu.b = correct_seq[15:0];
+          alu.alufn_signal = b110011;
+          cmp1 = alu.alu[0];
+          
+          alu.a = inp_seq[23:16];  //Comparing higher 8 bits 
+          alu.b = correct_seq[23:16];
+          alu.alufn_signal = b110011;
+          cmp2 = alu.alu[0];
+          
+          //Checking if both subparts of the sequence are equal
+          alu.a = cmp1;
+          alu.b = cmp2;
+          alu.alufn_signal = b011000; //OPCODE for AND function
+          result.d = alu.alu[0]; 
+          
+        
+          default: result.d = b0;
+      }
+      check_result = result.q;
+   }   
+}
+

@@ -1,0 +1,26 @@
+module compare (
+    input z,
+    input v,
+    input n,
+    input alufn_signal[6],
+    output out[16] 
+  ) {
+  
+  always {
+    out = 16b0;
+    
+    // Only care about LSB for compare component
+    case (alufn_signal) {
+      default: out[0] = 0;
+      
+      // CMPEQ: Z 
+      b110011: out[0] = z;
+      
+      // CMPLT: N xor V
+      b110101: out[0] = n ^ v;
+      
+      // CMPLE: Z + (N xor V)
+      b110111: out[0] = z | (n ^ v);
+    }
+  }
+}

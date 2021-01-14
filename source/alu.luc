@@ -1,0 +1,66 @@
+module alu (
+    input a[16],
+    input b[16],
+    input alufn_signal[6],                 //defining inputs and outputs of module
+    
+
+    output alu[16],
+    output z,
+    output v,
+    output n
+  ) {
+
+  adder adder1;                        //module initialization
+  compare comp1;
+  boolean boole1;
+  shifter shifter1;
+  multiplier mult;
+  
+  
+  always {
+    adder1.a = a;                      //assigning inputs to adder module
+    adder1.b = b;
+    adder1.alufn_signal = alufn_signal;
+    
+    comp1.v = adder1.v;                 //assigning inputs to comparator module
+    comp1.n = adder1.n;
+    comp1.z = adder1.z;
+    comp1.alufn_signal = alufn_signal;
+    
+    boole1.a = a;                    //assigning inputs to boolean module
+    boole1.b = b;
+    boole1.alufn_signal = alufn_signal;
+    
+    shifter1.a = a;                    //assigning inputs to shifter module
+    shifter1.b = b[3:0];
+    shifter1.alufn_signal = alufn_signal;
+    
+    mult.a = a;
+    mult.b = b;
+    mult.alufn_signal = alufn_signal;
+    
+    case(alufn_signal[5:4]){
+      b00:                          //if alufn[5:4] == 00, select adder output 
+        case(alufn_signal[1:0]){
+          b10:
+            alu = mult.out;
+          default:
+            alu = adder1.out;
+        } 
+      b01:                          //if alufn[5:4] == 01, select boolean output
+        alu = boole1.out;
+      b10:                          //if alufn[5:4] == 10, select shifter output
+        alu = shifter1.out;
+      b11:                          //if alufn[5:4] == 11, select compare output
+        alu = comp1.out;
+      default:
+        alu = 8b0;
+  }
+    
+    z = adder1.z;                      //assign z output
+    v = adder1.v;                      //assign v output   
+    n = adder1.n;                      //assign n output
+
+  }
+}
+

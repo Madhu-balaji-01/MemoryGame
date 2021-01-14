@@ -1,0 +1,14 @@
+module multiplier (
+    input a[16],  // clock
+    input b[16],  // reset
+    input alufn_signal[6],
+    output out[16]
+  ) {
+
+  always {
+    case(alufn_signal[5:0]){
+    b000010 : out = a*b;
+    default: out = 16b0;
+  }
+}
+}

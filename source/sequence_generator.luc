@@ -1,0 +1,58 @@
+//This module generates the sequence of lights to be displayed to the player. 
+
+module sequence_generator (
+    input clk,  // clock
+    input rst,  // reset
+    input stage[16],  //last 2 bits represent stage/level number
+    output seq[25]
+  ) {
+  
+  .clk(clk){
+   edge_detector edge_detector_rng;
+  
+    .rst(rst){
+    counter slowClock(#SIZE(1), #DIV(26));
+    dff seed[16];
+    pn_gen pn_gen;    //Pseudo-random number sequence_generator
+    }
+  }
+  
+  sig random_num[2]; //temp variable to store pn_gen's output 
+  
+  //Four colours - red, blue,green, yellow. Represented as RGBY i.e b1000 means Red is lit up
+  const LEVEL3 = {b100000010100100000100100,  //11 - RYGRBG
+                  b001000010100000110000001,  //10 - BYGYRY
+                  b010000011000100001000010,  //01 - GYRRGB
+                  b000101000001001000101000}; //00 - YGYBBR
+  
+  const LEVEL2 = {b00011000010010000010,  //11 - YRGRB
+                  b10000010010001000001,  //10 - RBGGY
+                  b00100001100001001000,  //01 - BYRGR
+                  b01000010100001000001}; //00 - GBRGY
+    
+  const LEVEL1 = {b1000001010000001,  //11 - RBRY
+                  b0010010000011000,  //10 - BGYR  
+                  b0100000110000001,  //01 - GYRY 
+                  b0001001010000100}; //00 - YBRG
+
+  always {    
+    pn_gen.seed = seed.q;
+    edge_detector_rng.in = slowClock.value;
+    pn_gen.next = edge_detector_rng.out;
+    
+    random_num = pn_gen.num[1:0];
+    
+    case(stage[1:0]){
+      01:
+      seq = LEVEL1[random_num];
+      
+      10:
+      seq = LEVEL2[random_num];
+      
+      11:
+      seq = LEVEL3[random_num]; 
+      
+      default: seq = 16b0;  
+  }
+    seed.d = seed.q + 1;
+}

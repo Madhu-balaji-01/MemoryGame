@@ -1,0 +1,29 @@
+module char_coder (
+    input char[8],
+    output segs [7]
+  ) {
+
+  always {
+    case(char){
+    0 : segs =7b0111111; //0,O
+    1 : segs =7b0110000; //1,I
+    2 : segs =7b1011011; //2
+    3 : segs =7b1001111; //3
+    4 : segs =7b1100110; //4
+    5 : segs =7b1101101; //5,S
+    6 : segs =7b0111110; //U
+    7 : segs =7b0111001; //C
+    8 : segs =7b1101110; //Y
+    9 : segs =7b0000000; //nothing
+    10: segs =7b0111000; //L
+    11: segs =7b1110001; //F 
+    12: segs =7b1110111; //A 
+    13: segs =7b1110110; //H
+    14: segs =7b1110011; //P 
+
+              
+    default:
+      segs = 7b0;
+    }
+  }
+}
